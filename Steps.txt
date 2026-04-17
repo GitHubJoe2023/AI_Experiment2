@@ -1,0 +1,68 @@
+---Step 1---
+
+mkdir -p ~/model-integrity-demo/{model,backup,logs,scripts}
+cd ~/model-integrity-demo
+
+echo "baseline-ai-model-version-1" > model/model.bin
+cp model/model.bin backup/model.bin.clean
+sha256sum model/model.bin > model/model.bin.sha256
+
+cat model/model.bin
+cat model/model.bin.sha256
+
+---Step 2---
+
+sudo nano check_model.sh
+
+#!/bin/bash
+cd "$(dirname "$0")/.."
+
+TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+RESULT=$(sha256sum -c model/model.bin.sha256 2>&1)
+
+echo "$TIMESTAMP | $RESULT" >> logs/integrity.log
+echo "$RESULT"
+
+---Step 3---
+
+cd ..
+sudo chmod +x scripts/check_model.sh
+
+---Step 4---
+
+cd scripts
+
+sudo nano restore_model.sh
+
+#!/bin/bash
+cd "$(dirname "$0")/.."
+
+TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+cp backup/model.bin.clean model/model.bin
+sha256sum model/model.bin > model/model.bin.sha256
+
+echo "$TIMESTAMP | Model restored from clean backup" >> logs/integrity.log
+echo "Model restored successfully"
+
+---Step 5---
+
+cd ..
+sudo chmod +x scripts/restore_model.sh
+
+---Step 6---
+
+~/model-integrity-demo/scripts/check_model.sh
+
+---Step 7---
+
+echo "malicious change injected" >> ~/model-integrity-demo/model/model.bin
+~/model-integrity-demo/scripts/check_model.sh
+
+---Step 8---
+
+~/model-integrity-demo/scripts/restore_model.sh
+~/model-integrity-demo/scripts/check_model.sh
+
+---Step 9---
+
+cat ~/model-integrity-demo/logs/integrity.log
